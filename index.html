@@ -1,90 +1,187 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Omkar Apps Hub - Gaming</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      background: #f4f6f8;
-      color: #333;
-    }
-    header {
-      background: #0f172a;
-      color: white;
-      padding: 20px;
-      text-align: center;
-    }
-    nav a {
-      color: white;
-      margin: 0 12px;
-      text-decoration: none;
-      font-weight: bold;
-    }
-    section {
-      padding: 20px;
-      max-width: 900px;
-      margin: auto;
-    }
-    .card {
-      background: white;
-      padding: 20px;
-      margin: 20px 0;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    .ads {
-      background: #e5e7eb;
-      padding: 15px;
-      text-align: center;
-      border-radius: 8px;
-      font-size: 14px;
-      color: #555;
-    }
-    footer {
-      background: #0f172a;
-      color: white;
-      text-align: center;
-      padding: 12px;
-      margin-top: 30px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Super Bird Pro + High Score</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Arial', sans-serif; }
+        canvas { display: block; margin: 0 auto; }
+        #ui { 
+            position: absolute; width: 100%; top: 20px; 
+            display: flex; flex-direction: column; align-items: center;
+            color: white; pointer-events: none; z-index: 10;
+        }
+        .score-text { font-size: 50px; font-weight: 900; text-shadow: 3px 3px 0px #000; }
+        .high-score { font-size: 20px; font-weight: bold; text-shadow: 2px 2px 0px #000; color: #FFD700; }
+    </style>
 </head>
-<body><header>
-  <h1>Omkar Apps Hub</h1>
-  <p>Gaming • Apps • Tech</p>
-  <p>Made by Omkar Kendre</p>
-  <nav>
-    <a href="#home">Home</a>
-    <a href="#about">About</a>
-    <a href="#contact">Contact</a>
-  </nav>
-</header><section id="home">
-  <div class="card">
-    <h2>Home</h2>
-    <p><strong>Welcome to my website!</strong><br>
-    I can help you 24/7 hours. Thank you.</p><p><em>Hindi / English / Marathi supported</em></p>
+<body>
+    <div id="ui">
+        <div class="score-text" id="score">0</div>
+        <div class="high-score" id="highScore">Best: 0</div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
 
-  </div>  <div class="ads">
-    <!-- Google AdSense Ad Code will be pasted here later -->
-    Ads Placeholder (Google AdSense)
-  </div>
-</section><section id="about">
-  <div class="card">
-    <h2>About Me</h2>
-    <p>
-      I am a Computer Engineering student learning web and app development.<br><br>
-      <strong>मी Computer Engineering चा विद्यार्थी आहे आणि Web व App Development शिकत आहे.</strong><br><br>
-      <strong>Main Computer Engineering ka student hoon jo web aur app development seekh raha hoon.</strong>
-    </p>
-  </div>
-</section><section id="contact">
-  <div class="card">
-    <h2>Contact</h2>
-    <p>Email: <a href="mailto:omkarkendre3300@gmail.com">omkarkendre3300@gmail.com</a></p>
-  </div>
-</section><footer>
-  <p>© 2025 Omkar Apps Hub. All rights reserved.</p>
-</footer></body>
+    <audio id="bgMusic" loop>
+        <source src="https://www.bensound.com/bensound-music/bensound-relaxing.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const highScoreElement = document.getElementById('highScore');
+        const bgMusic = document.getElementById('bgMusic');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // --- GAME CONFIG ---
+        const GRAVITY = 0.3;
+        const JUMP = -6;
+        const PIPE_WIDTH = 75;
+        const PIPE_GAP = 230; 
+        const PIPE_DISTANCE = 350;
+
+        let bird = { x: 70, y: canvas.height/2, radius: 20, velocity: 0 };
+        let pipes = [];
+        let score = 0;
+        let highScore = localStorage.getItem('birdHighScore') || 0;
+        let gameActive = true;
+        let firstTap = true;
+
+        highScoreElement.innerText = "Best: " + highScore;
+
+        function createPipe() {
+            let minH = 100;
+            let maxH = canvas.height - PIPE_GAP - minH;
+            let topHeight = Math.random() * (maxH - minH) + minH;
+            pipes.push({ x: canvas.width, top: topHeight, passed: false });
+        }
+
+        function resetGame() {
+            bird.y = canvas.height / 2;
+            bird.velocity = 0;
+            pipes = [];
+            score = 0;
+            scoreElement.innerText = "0";
+            gameActive = true;
+            createPipe();
+        }
+
+        const handleAction = (e) => {
+            if (e.type === 'touchstart') e.preventDefault();
+            
+            // Start music on first tap
+            if(firstTap) {
+                bgMusic.play();
+                firstTap = false;
+            }
+
+            if (!gameActive) {
+                resetGame();
+            } else {
+                bird.velocity = JUMP;
+            }
+        };
+
+        window.addEventListener('touchstart', handleAction, {passive: false});
+        window.addEventListener('mousedown', handleAction);
+
+        function update() {
+            if (!gameActive) return;
+
+            bird.velocity += GRAVITY;
+            bird.y += bird.velocity;
+
+            if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - PIPE_DISTANCE) {
+                createPipe();
+            }
+
+            pipes.forEach((pipe, index) => {
+                pipe.x -= 3.8; 
+
+                if (bird.x + bird.radius - 5 > pipe.x && bird.x - bird.radius + 5 < pipe.x + PIPE_WIDTH) {
+                    if (bird.y - bird.radius + 5 < pipe.top || bird.y + bird.radius - 5 > pipe.top + PIPE_GAP) {
+                        endGame();
+                    }
+                }
+
+                if (!pipe.passed && pipe.x < bird.x) {
+                    score++;
+                    pipe.passed = true;
+                    scoreElement.innerText = score;
+                }
+
+                if (pipe.x + PIPE_WIDTH < 0) pipes.splice(index, 1);
+            });
+
+            if (bird.y + bird.radius > canvas.height || bird.y - bird.radius < 0) {
+                endGame();
+            }
+        }
+
+        function endGame() {
+            gameActive = false;
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('birdHighScore', highScore);
+                highScoreElement.innerText = "Best: " + highScore;
+            }
+        }
+
+        function draw() {
+            ctx.fillStyle = "#87CEEB";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Pipes
+            pipes.forEach(pipe => {
+                ctx.fillStyle = "#2ecc71";
+                ctx.fillRect(pipe.x, 0, PIPE_WIDTH, pipe.top);
+                ctx.fillRect(pipe.x, pipe.top + PIPE_GAP, PIPE_WIDTH, canvas.height);
+                ctx.strokeStyle = "#1b5e20";
+                ctx.lineWidth = 3;
+                ctx.strokeRect(pipe.x, 0, PIPE_WIDTH, pipe.top);
+                ctx.strokeRect(pipe.x, pipe.top + PIPE_GAP, PIPE_WIDTH, canvas.height);
+            });
+
+            // Bird
+            ctx.save();
+            ctx.translate(bird.x, bird.y);
+            ctx.rotate(bird.velocity * 0.05);
+            ctx.beginPath();
+            ctx.arc(0, 0, bird.radius, 0, Math.PI * 2);
+            ctx.fillStyle = "#FFD700";
+            ctx.fill();
+            ctx.stroke();
+            // Eye
+            ctx.beginPath(); ctx.arc(8, -6, 5, 0, Math.PI * 2); ctx.fillStyle = "white"; ctx.fill(); ctx.stroke();
+            // Beak
+            ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(25, 5); ctx.lineTo(15, 10); ctx.fillStyle = "orange"; ctx.fill(); ctx.stroke();
+            ctx.restore();
+
+            if (!gameActive) {
+                ctx.fillStyle = "rgba(0,0,0,0.7)";
+                ctx.fillRect(0,0, canvas.width, canvas.height);
+                ctx.fillStyle = "white";
+                ctx.textAlign = "center";
+                ctx.font = "bold 30px Arial";
+                ctx.fillText("OUT! SCORE: " + score, canvas.width/2, canvas.height/2);
+                ctx.font = "20px Arial";
+                ctx.fillText("TAP TO TRY AGAIN", canvas.width/2, canvas.height/2 + 50);
+            }
+
+            update();
+            requestAnimationFrame(draw);
+        }
+
+        createPipe();
+        draw();
+    </script>
+</body>
 </html>
+<!-- Existing body ke end me, canvas ke baad -->
+<div style="position: fixed; bottom: 10px; width: 100%; text-align: center; font-weight: bold; color: white; text-shadow: 1px 1px 2px black; z-index: 10;">
+    Made by Omkar
+</div>
